@@ -14,6 +14,7 @@ export default function Poker() {
   const [pendingVote, setPendingVote] = useState(null); // Vote selected but not yet submitted
   const [isRevealed, setIsRevealed] = useState(false);
   const [story, setStory] = useState('');
+  const [savedStory, setSavedStory] = useState(''); // Track the saved story from server
   const [voterName, setVoterName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmittingVote, setIsSubmittingVote] = useState(false);
@@ -27,6 +28,7 @@ export default function Poker() {
   const lastVoteCountRef = useRef(0); // Track last vote count
   const needsVoteCheckRef = useRef(false); // Flag to check votes immediately
   const needsStoryCheckRef = useRef(false); // Flag to check story immediately
+  const isStoryInputFocusedRef = useRef(false); // Track if story input is focused
 
   // Fibonacci sequence with special cards
   const votingCards = [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, '?', '☕'];
@@ -64,7 +66,12 @@ export default function Poker() {
       if (response.ok) {
         setIsAdmin(data.isAdmin || false);
         if (data.activeStory) {
-          setStory(data.activeStory.description);
+          const storyDescription = data.activeStory.description || '';
+          setStory(storyDescription);
+          setSavedStory(storyDescription); // Update saved story
+        } else {
+          setStory('');
+          setSavedStory('');
         }
       }
     } catch (error) {
@@ -82,6 +89,11 @@ export default function Poker() {
       return;
     }
     
+    // Skip if user is currently typing in the story input
+    if (isStoryInputFocusedRef.current && !force) {
+      return;
+    }
+    
     try {
       const response = await fetch(`/api/poker-session/${sessionId}/story`);
       const data = await response.json();
@@ -89,13 +101,20 @@ export default function Poker() {
       // Only update if story has changed (check timestamp or content)
       const storyUpdated = data.lastUpdated || 0;
       if (force || storyUpdated > lastStoryUpdateRef.current || !data.id) {
-        if (data.description) {
-          setStory(data.description);
-        } else {
-          setStory('');
+        // Only update if the server story is different from current local story
+        // This prevents overwriting user input
+        const serverStory = data.description || '';
+        if (force || serverStory !== story) {
+          if (data.description) {
+            setStory(data.description);
+            setSavedStory(data.description); // Update saved story
+          } else {
+            setStory('');
+            setSavedStory('');
+          }
+          lastStoryUpdateRef.current = storyUpdated;
+          needsStoryCheckRef.current = false;
         }
-        lastStoryUpdateRef.current = storyUpdated;
-        needsStoryCheckRef.current = false;
       }
     } catch (error) {
       console.error('Error fetching story:', error);
@@ -329,6 +348,7 @@ export default function Poker() {
       if (response.ok) {
         // Update story state after successful API call
         setStory(storyToUpdate);
+        setSavedStory(storyToUpdate); // Update saved story after successful update
         
         // Reset votes after story is updated
         setVotes({});
@@ -450,6 +470,11 @@ export default function Poker() {
         lastVoteUpdateRef.current = 0;
         if (!story.trim()) {
           setStory('');
+          setSavedStory(''); // Update saved story when cleared
+        } else {
+          // If story was provided, it will be updated by the fetchStory call
+          // But we should update savedStory to match current story
+          setSavedStory(story.trim());
         }
         // Trigger immediate checks after new story
         triggerStoryCheck();
@@ -488,6 +513,7 @@ export default function Poker() {
       setSelectedVote(null);
       setPendingVote(null);
       setStory('');
+      setSavedStory('');
       setVoterName('');
       setIsRevealed(false);
       
@@ -617,6 +643,12 @@ export default function Poker() {
                 className={styles.storyInput}
                 value={story}
                 onChange={(e) => setStory(e.target.value)}
+                onFocus={() => {
+                  isStoryInputFocusedRef.current = true;
+                }}
+                onBlur={() => {
+                  isStoryInputFocusedRef.current = false;
+                }}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
                     handleStoryUpdate();
@@ -628,7 +660,7 @@ export default function Poker() {
               <button
                 className={styles.updateStoryBtn}
                 onClick={handleStoryUpdate}
-                disabled={isUpdatingStory || !story.trim()}
+                disabled={isUpdatingStory || !story.trim() || story.trim() === savedStory.trim()}
               >
                 {isUpdatingStory ? 'Updating...' : 'Update'}
               </button>
