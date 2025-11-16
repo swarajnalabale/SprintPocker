@@ -46,3 +46,44 @@ model Session {
   @@map("sessions")
 }
 
+model RetroMeeting {
+  id          Int        @id @default(autoincrement())
+  isActive    Boolean    @default(true) @map("is_active")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  columns RetroColumn[]
+  items   RetroItem[]
+
+  @@map("retro_meetings")
+}
+
+model RetroColumn {
+  id            Int         @id @default(autoincrement())
+  retroMeetingId Int        @map("retro_meeting_id")
+  title         String
+  order         Int         @default(0)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  retroMeeting RetroMeeting @relation(fields: [retroMeetingId], references: [id], onDelete: Cascade)
+  items        RetroItem[]
+
+  @@map("retro_columns")
+}
+
+model RetroItem {
+  id            Int         @id @default(autoincrement())
+  retroMeetingId Int        @map("retro_meeting_id")
+  columnId      Int         @map("column_id")
+  content       String
+  authorName    String      @map("author_name")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  retroMeeting RetroMeeting @relation(fields: [retroMeetingId], references: [id], onDelete: Cascade)
+  column       RetroColumn  @relation(fields: [columnId], references: [id], onDelete: Cascade)
+
+  @@map("retro_items")
+}
+
