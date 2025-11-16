@@ -5,17 +5,32 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-model Story {
+model PokerSession {
   id          Int      @id @default(autoincrement())
-  description String
-  isActive    Boolean  @default(true) @map("is_active")
+  sessionId   String   @unique @map("session_id")
+  adminToken  String   @map("admin_token")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  votes    Vote[]
-  sessions Session[]
+  stories Story[]
+
+  @@map("poker_sessions")
+}
+
+model Story {
+  id            Int      @id @default(autoincrement())
+  pokerSessionId Int?    @map("poker_session_id")
+  description   String
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  pokerSession PokerSession? @relation(fields: [pokerSessionId], references: [id], onDelete: Cascade)
+  votes        Vote[]
+  sessions     Session[]
 
   @@map("stories")
 }
@@ -46,14 +61,29 @@ model Session {
   @@map("sessions")
 }
 
-model RetroMeeting {
-  id          Int        @id @default(autoincrement())
-  isActive    Boolean    @default(true) @map("is_active")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
+model RetroSession {
+  id          Int      @id @default(autoincrement())
+  sessionId   String   @unique @map("session_id")
+  adminToken  String   @map("admin_token")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-  columns RetroColumn[]
-  items   RetroItem[]
+  meetings RetroMeeting[]
+
+  @@map("retro_sessions")
+}
+
+model RetroMeeting {
+  id            Int        @id @default(autoincrement())
+  retroSessionId Int?      @map("retro_session_id")
+  title         String     @default("🔄 Retro Meeting")
+  isActive      Boolean    @default(true) @map("is_active")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  retroSession RetroSession? @relation(fields: [retroSessionId], references: [id], onDelete: Cascade)
+  columns      RetroColumn[]
+  items        RetroItem[]
 
   @@map("retro_meetings")
 }

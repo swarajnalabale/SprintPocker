@@ -44,6 +44,7 @@ export async function getVotes(storyId: number) {
       select: {
         voterName: true,
         voteValue: true,
+        createdAt: true,
       },
     })
     return votes
@@ -287,6 +288,351 @@ export async function deleteRetroItem(itemId: number) {
     })
   } catch (error) {
     console.error("Error deleting retro item:", error)
+    throw error
+  }
+}
+
+// Retro Session Helper Functions
+export async function createRetroSession() {
+  try {
+    // Generate unique sessionId (8 character alphanumeric)
+    const generateSessionId = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = '';
+      for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    // Generate admin token (32 character random string)
+    const generateAdminToken = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < 32; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    let sessionId = generateSessionId();
+    let existingSession = await prisma.retroSession.findUnique({
+      where: { sessionId },
+    });
+
+    // Ensure unique sessionId
+    while (existingSession) {
+      sessionId = generateSessionId();
+      existingSession = await prisma.retroSession.findUnique({
+        where: { sessionId },
+      });
+    }
+
+    const adminToken = generateAdminToken();
+
+    const session = await prisma.retroSession.create({
+      data: {
+        sessionId,
+        adminToken,
+      },
+    })
+
+    return session
+  } catch (error) {
+    console.error("Error creating retro session:", error)
+    throw error
+  }
+}
+
+export async function getRetroSessionBySessionId(sessionId: string) {
+  try {
+    const session = await prisma.retroSession.findUnique({
+      where: { sessionId },
+      include: {
+        meetings: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            columns: {
+              orderBy: { order: 'asc' },
+              include: {
+                items: {
+                  orderBy: { createdAt: 'asc' },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+    return session
+  } catch (error) {
+    console.error("Error getting retro session:", error)
+    throw error
+  }
+}
+
+export async function verifyRetroAdminToken(sessionId: string, token: string) {
+  try {
+    const session = await prisma.retroSession.findUnique({
+      where: { sessionId },
+      select: { adminToken: true },
+    })
+
+    if (!session) {
+      return false
+    }
+
+    return session.adminToken === token
+  } catch (error) {
+    console.error("Error verifying retro admin token:", error)
+    return false
+  }
+}
+
+export async function getActiveRetroMeetingBySessionId(sessionId: string) {
+  try {
+    const session = await prisma.retroSession.findUnique({
+      where: { sessionId },
+      include: {
+        meetings: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          include: {
+            columns: {
+              orderBy: { order: 'asc' },
+              include: {
+                items: {
+                  orderBy: { createdAt: 'asc' },
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!session || !session.meetings || session.meetings.length === 0) {
+      return null
+    }
+
+    return session.meetings[0]
+  } catch (error) {
+    console.error("Error getting active retro meeting by session:", error)
+    throw error
+  }
+}
+
+export async function createRetroMeetingForSession(sessionId: string, defaultColumns: string[] = [], meetingTitle: string = "🔄 Retro Meeting") {
+  try {
+    const session = await prisma.retroSession.findUnique({
+      where: { sessionId },
+    })
+
+    if (!session) {
+      throw new Error("Session not found")
+    }
+
+    // Deactivate all existing meetings in this session
+    await prisma.retroMeeting.updateMany({
+      where: { 
+        retroSessionId: session.id,
+        isActive: true 
+      },
+      data: { isActive: false },
+    })
+
+    // Create new meeting with default columns
+    const meeting = await prisma.retroMeeting.create({
+      data: {
+        retroSessionId: session.id,
+        title: meetingTitle.trim() || "🔄 Retro Meeting",
+        isActive: true,
+        columns: {
+          create: defaultColumns.map((title, index) => ({
+            title,
+            order: index,
+          })),
+        },
+      },
+      include: {
+        columns: {
+          orderBy: { order: 'asc' },
+          include: {
+            items: {
+              orderBy: { createdAt: 'asc' },
+            },
+          },
+        },
+      },
+    })
+
+    return meeting
+  } catch (error) {
+    console.error("Error creating retro meeting for session:", error)
+    throw error
+  }
+}
+
+export async function updateRetroMeetingTitle(meetingId: number, title: string) {
+  try {
+    const meeting = await prisma.retroMeeting.update({
+      where: { id: meetingId },
+      data: { title: title.trim() },
+    })
+    return meeting
+  } catch (error) {
+    console.error("Error updating retro meeting title:", error)
+    throw error
+  }
+}
+
+// Poker Session Helper Functions
+export async function createPokerSession() {
+  try {
+    // Generate unique sessionId (8 character alphanumeric)
+    const generateSessionId = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let result = '';
+      for (let i = 0; i < 8; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    // Generate admin token (32 character random string)
+    const generateAdminToken = () => {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      let result = '';
+      for (let i = 0; i < 32; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return result;
+    }
+
+    let sessionId = generateSessionId();
+    let existingSession = await prisma.pokerSession.findUnique({
+      where: { sessionId },
+    });
+
+    // Ensure unique sessionId
+    while (existingSession) {
+      sessionId = generateSessionId();
+      existingSession = await prisma.pokerSession.findUnique({
+        where: { sessionId },
+      });
+    }
+
+    const adminToken = generateAdminToken();
+
+    const session = await prisma.pokerSession.create({
+      data: {
+        sessionId,
+        adminToken,
+      },
+    })
+
+    return session
+  } catch (error) {
+    console.error("Error creating poker session:", error)
+    throw error
+  }
+}
+
+export async function getPokerSessionBySessionId(sessionId: string) {
+  try {
+    const session = await prisma.pokerSession.findUnique({
+      where: { sessionId },
+      include: {
+        stories: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    })
+    return session
+  } catch (error) {
+    console.error("Error getting poker session:", error)
+    throw error
+  }
+}
+
+export async function verifyAdminToken(sessionId: string, token: string) {
+  try {
+    const session = await prisma.pokerSession.findUnique({
+      where: { sessionId },
+      select: { adminToken: true },
+    })
+
+    if (!session) {
+      return false
+    }
+
+    return session.adminToken === token
+  } catch (error) {
+    console.error("Error verifying admin token:", error)
+    return false
+  }
+}
+
+export async function getActiveStoryBySessionId(sessionId: string) {
+  try {
+    const session = await prisma.pokerSession.findUnique({
+      where: { sessionId },
+      include: {
+        stories: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    })
+
+    if (!session || !session.stories || session.stories.length === 0) {
+      return null
+    }
+
+    return session.stories[0]
+  } catch (error) {
+    console.error("Error getting active story by session:", error)
+    throw error
+  }
+}
+
+export async function createStoryForSession(sessionId: string, description: string) {
+  try {
+    const session = await prisma.pokerSession.findUnique({
+      where: { sessionId },
+    })
+
+    if (!session) {
+      throw new Error("Session not found")
+    }
+
+    // Deactivate all existing stories in this session
+    await prisma.story.updateMany({
+      where: { 
+        pokerSessionId: session.id,
+        isActive: true 
+      },
+      data: { isActive: false },
+    })
+
+    // Create new story
+    const story = await prisma.story.create({
+      data: {
+        pokerSessionId: session.id,
+        description: description.trim(),
+        isActive: true,
+      },
+    })
+
+    return story
+  } catch (error) {
+    console.error("Error creating story for session:", error)
     throw error
   }
 }

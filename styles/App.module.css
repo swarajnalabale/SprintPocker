@@ -21,11 +21,44 @@
   margin-bottom: 40px;
 }
 
+.headerTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.headerTop > div {
+  flex: 1;
+  min-width: 200px;
+}
+
 .header h1 {
   font-size: 3rem;
   color: #333;
   margin-bottom: 10px;
   font-weight: 700;
+}
+
+.terminateSessionBtn {
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 2px solid #f5576c;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  color: #f5576c;
+  white-space: nowrap;
+}
+
+.terminateSessionBtn:hover {
+  background: #f5576c;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
 }
 
 .subtitle {
@@ -152,6 +185,14 @@
   transform: translateY(-5px);
   border-color: #667eea;
   box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.voteCard.pending {
+  background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+  color: white;
+  border-color: #ffd700;
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
 }
 
 .voteCard.selected {
@@ -349,6 +390,230 @@
   font-weight: 600;
 }
 
+.submitVoteSection {
+  margin-top: 30px;
+  padding: 20px;
+  background: #f0f0ff;
+  border-radius: 15px;
+  text-align: center;
+  border: 2px solid #667eea;
+}
+
+.selectedVoteText {
+  font-size: 1.1rem;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.selectedVoteText strong {
+  font-size: 1.5rem;
+  color: #667eea;
+}
+
+.submitVoteBtn {
+  padding: 12px 40px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin-right: 10px;
+}
+
+.submitVoteBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.submitVoteBtn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.cancelVoteBtn {
+  padding: 12px 30px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+  color: #666;
+}
+
+.cancelVoteBtn:hover:not(:disabled) {
+  border-color: #999;
+  background: #f5f5f5;
+}
+
+.cancelVoteBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sessionActions {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 40px;
+}
+
+.sessionCard {
+  background: #f8f9fa;
+  border-radius: 15px;
+  padding: 40px;
+  text-align: center;
+  min-width: 300px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.sessionCard h2 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 1.5rem;
+}
+
+.sessionCard p {
+  color: #666;
+  margin-bottom: 25px;
+  font-size: 1rem;
+}
+
+.createSessionBtn,
+.joinSessionBtn {
+  padding: 12px 30px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  width: 100%;
+}
+
+.createSessionBtn:hover:not(:disabled),
+.joinSessionBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.createSessionBtn:disabled,
+.joinSessionBtn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.joinSessionInput {
+  width: 100%;
+  padding: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: 2px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  transition: border-color 0.3s;
+  text-transform: uppercase;
+}
+
+.joinSessionInput:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.adminBadge {
+  margin-top: 10px;
+}
+
+.adminBadge span {
+  display: inline-block;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.sessionInfo {
+  background: #f0f0ff;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.sessionInfo p {
+  color: #666;
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+}
+
+.sessionLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sessionLink code {
+  background: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #333;
+  border: 2px solid #e0e0e0;
+  flex: 1;
+  min-width: 200px;
+  word-break: break-all;
+}
+
+.copyBtn {
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.copyBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.storyDisplay {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.storyDisplay h3 {
+  color: #333;
+  margin-bottom: 10px;
+  font-size: 1.2rem;
+}
+
+.storyDisplay p {
+  color: #666;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
 @media (max-width: 768px) {
   .sprintPokerContainer {
     padding: 20px;
@@ -377,6 +642,32 @@
   .resultsGrid {
     flex-direction: column;
     gap: 20px;
+  }
+
+  .sessionActions {
+    flex-direction: column;
+  }
+
+  .sessionCard {
+    min-width: 100%;
+  }
+
+  .sessionLink {
+    flex-direction: column;
+  }
+
+  .sessionLink code {
+    width: 100%;
+  }
+
+  .headerTop {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .terminateSessionBtn {
+    width: 100%;
+    margin-top: 15px;
   }
 }
 
