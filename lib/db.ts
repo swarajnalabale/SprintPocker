@@ -630,6 +630,16 @@ export async function createStoryForSession(sessionId: string, description: stri
       },
     })
 
+    // Create a new session for the new story with isRevealed: false
+    await prisma.session.upsert({
+      where: { storyId: story.id },
+      update: { isRevealed: false },
+      create: {
+        storyId: story.id,
+        isRevealed: false,
+      },
+    })
+
     return story
   } catch (error) {
     console.error("Error creating story for session:", error)
