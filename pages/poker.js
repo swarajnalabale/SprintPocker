@@ -26,6 +26,7 @@ export default function Poker() {
   const lastVoteUpdateRef = useRef(0); // Track last vote update timestamp
   const lastStoryUpdateRef = useRef(0); // Track last story update timestamp
   const lastVoteCountRef = useRef(0); // Track last vote count
+  const lastIsRevealedRef = useRef(false); // Track last isRevealed state
   const needsVoteCheckRef = useRef(false); // Flag to check votes immediately
   const needsStoryCheckRef = useRef(false); // Flag to check story immediately
   const isStoryInputFocusedRef = useRef(false); // Track if story input is focused
@@ -83,14 +84,14 @@ export default function Poker() {
   const fetchStory = async (force = false) => {
     if (!sessionId) return;
     
-    // Skip if we just updated (to avoid overwriting)
-    if (skipNextStoryPollRef.current && !force) {
+    // Skip if we just updated (to avoid overwriting) - but only for admin
+    if (skipNextStoryPollRef.current && !force && isAdmin) {
       skipNextStoryPollRef.current = false;
       return;
     }
     
-    // Skip if user is currently typing in the story input
-    if (isStoryInputFocusedRef.current && !force) {
+    // Skip if user is currently typing in the story input - but only for admin
+    if (isStoryInputFocusedRef.current && !force && isAdmin) {
       return;
     }
     
@@ -102,9 +103,11 @@ export default function Poker() {
       const storyUpdated = data.lastUpdated || 0;
       if (force || storyUpdated > lastStoryUpdateRef.current || !data.id) {
         // Only update if the server story is different from current local story
-        // This prevents overwriting user input
+        // This prevents overwriting user input (for admin only)
         const serverStory = data.description || '';
-        if (force || serverStory !== story) {
+        // For non-admin users, always update if story changed
+        // For admin users, only update if different (to preserve typing)
+        if (force || !isAdmin || serverStory !== story) {
           if (data.description) {
             setStory(data.description);
             setSavedStory(data.description); // Update saved story
@@ -112,9 +115,23 @@ export default function Poker() {
             setStory('');
             setSavedStory('');
           }
-          lastStoryUpdateRef.current = storyUpdated;
-          needsStoryCheckRef.current = false;
+          
+          // If story changed, also reset votes and reveal state for non-admin users
+          // This ensures they see the fresh state immediately
+          if (!isAdmin && serverStory !== story && story !== '') {
+            setVotes({});
+            setSelectedVote(null);
+            setIsRevealed(false);
+            setPendingVote(null);
+            // Trigger immediate vote fetch to get fresh state
+            fetchVotes(true);
+          }
         }
+        // Always update timestamp when force=true or when story is updated
+        if (force || storyUpdated > lastStoryUpdateRef.current) {
+          lastStoryUpdateRef.current = storyUpdated;
+        }
+        needsStoryCheckRef.current = false;
       }
     } catch (error) {
       console.error('Error fetching story:', error);
@@ -132,10 +149,40 @@ export default function Poker() {
       // Only update if votes have changed (check timestamp or vote count)
       const voteUpdated = data.lastUpdated || 0;
       const voteCount = data.voteCount || 0;
+      const storyUpdated = data.storyLastUpdated || 0;
       
-      if (force || voteUpdated > lastVoteUpdateRef.current || voteCount !== lastVoteCountRef.current) {
+      // Check if story was updated (which means votes should be cleared)
+      // If story was updated after our last story check, we need to reset everything
+      if (storyUpdated > lastStoryUpdateRef.current && lastStoryUpdateRef.current > 0) {
+        // Story was updated - clear votes and reset state
+        setVotes({});
+        setSelectedVote(null);
+        setIsRevealed(false);
+        setPendingVote(null);
+        lastVoteCountRef.current = 0;
+        lastIsRevealedRef.current = false;
+        lastVoteUpdateRef.current = voteUpdated;
+        // Update story timestamp to match
+        lastStoryUpdateRef.current = storyUpdated;
+        needsVoteCheckRef.current = false;
+        return;
+      }
+      
+      // Check if isRevealed state changed (critical for enabling/disabling voting)
+      const currentIsRevealed = data.isRevealed || false;
+      const isRevealedChanged = currentIsRevealed !== lastIsRevealedRef.current;
+      
+      // Always update if force=true, or if votes have actually changed, OR if isRevealed changed
+      if (force || voteUpdated > lastVoteUpdateRef.current || voteCount !== lastVoteCountRef.current || isRevealedChanged) {
+        // Always update votes and isRevealed state when force=true or data changed
         setVotes(data.votes || {});
-        setIsRevealed(data.isRevealed || false);
+        setIsRevealed(currentIsRevealed);
+        
+        // If isRevealed changed from true to false (votes were reset), also clear selected vote
+        if (isRevealedChanged && !currentIsRevealed && lastIsRevealedRef.current) {
+          setSelectedVote(null);
+          setPendingVote(null);
+        }
         
         // Update selected vote if user has voted
         if (voterName && data.votes && data.votes[voterName]) {
@@ -143,10 +190,12 @@ export default function Poker() {
           setPendingVote(null); // Clear pending vote if already submitted
         } else if (!data.votes || !data.votes[voterName]) {
           setSelectedVote(null);
+          setPendingVote(null); // Also clear pending vote when no vote exists
         }
         
         lastVoteUpdateRef.current = voteUpdated;
         lastVoteCountRef.current = voteCount;
+        lastIsRevealedRef.current = currentIsRevealed;
         needsVoteCheckRef.current = false;
       }
     } catch (error) {
@@ -163,19 +212,15 @@ export default function Poker() {
     fetchStory(true);
     fetchVotes(true);
 
-    // Smart polling - only check when needed
+    // Smart polling - check very frequently for immediate updates
     pollingIntervalRef.current = setInterval(() => {
-      // Always check votes if not revealed (people might be voting)
-      if (!isRevealed) {
-        fetchVotes();
-      } else if (needsVoteCheckRef.current) {
-        // Check votes if flag is set (after reveal/reset)
-        fetchVotes();
-      }
-      
-      // Always check story periodically (admin might have updated)
-      // This ensures voters see story updates
+      // Always check story first (admin might have updated - this is critical for non-admin users)
+      // This ensures voters see story updates immediately
       fetchStory();
+      
+      // Always check votes (even if revealed, to detect resets)
+      // This ensures users see vote resets immediately
+      fetchVotes();
       
       // Clear flags after checking
       if (needsStoryCheckRef.current) {
@@ -184,7 +229,7 @@ export default function Poker() {
       if (needsVoteCheckRef.current) {
         needsVoteCheckRef.current = false;
       }
-    }, 5000); // Check every 5 seconds (balance between responsiveness and efficiency)
+    }, 500); // Check every 500ms (0.5 seconds) for immediate updates
 
     // Cleanup on unmount
     return () => {
@@ -346,24 +391,32 @@ export default function Poker() {
       const data = await response.json();
       
       if (response.ok) {
-        // Update story state after successful API call
-        setStory(storyToUpdate);
-        setSavedStory(storyToUpdate); // Update saved story after successful update
-        
-        // Reset votes after story is updated
+        // IMMEDIATELY clear all vote-related state FIRST (before any fetches)
         setVotes({});
         setSelectedVote(null);
         setIsRevealed(false);
         setPendingVote(null);
         lastVoteCountRef.current = 0;
         lastVoteUpdateRef.current = 0;
+        lastIsRevealedRef.current = false;
         
-        // Skip next story poll to avoid overwriting
-        skipNextStoryPollRef.current = true;
+        // Update story state after successful API call
+        setStory(storyToUpdate);
+        setSavedStory(storyToUpdate); // Update saved story after successful update
         
-        // Trigger immediate checks for all users
-        triggerStoryCheck();
-        triggerVoteCheck();
+        // Update the last story update timestamp from API response
+        if (data.lastUpdated) {
+          lastStoryUpdateRef.current = data.lastUpdated;
+        }
+        
+        // Don't skip next story poll - we want to ensure story is synced
+        skipNextStoryPollRef.current = false;
+        
+        // Force immediate story fetch to sync timestamp and ensure all users see update
+        await fetchStory(true);
+        
+        // Force immediate vote fetch to get fresh state from server (votes should be empty, isRevealed should be false)
+        await fetchVotes(true);
       } else {
         alert(data.error || 'Failed to update story');
         // Revert to server state
@@ -398,6 +451,7 @@ export default function Poker() {
       
       if (response.ok) {
         setIsRevealed(true);
+        lastIsRevealedRef.current = true;
         // Trigger immediate vote check after reveal
         triggerVoteCheck();
       } else {
@@ -427,13 +481,23 @@ export default function Poker() {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        
+        // Immediately clear votes and reset state (client-side)
         setVotes({});
         setSelectedVote(null);
         setIsRevealed(false);
+        setPendingVote(null);
         lastVoteCountRef.current = 0;
-        lastVoteUpdateRef.current = 0;
-        // Trigger immediate vote check after reset
-        triggerVoteCheck();
+        lastIsRevealedRef.current = false;
+        
+        // Update timestamp from server response
+        if (data.lastUpdated) {
+          lastVoteUpdateRef.current = data.lastUpdated;
+        }
+        
+        // Force immediate vote fetch to sync with server and notify all users
+        await fetchVotes(true);
       } else {
         const data = await response.json();
         alert(data.error || 'Failed to reset votes');
@@ -468,6 +532,7 @@ export default function Poker() {
         setIsRevealed(false);
         lastVoteCountRef.current = 0;
         lastVoteUpdateRef.current = 0;
+        lastIsRevealedRef.current = false;
         if (!story.trim()) {
           setStory('');
           setSavedStory(''); // Update saved story when cleared
@@ -734,13 +799,6 @@ export default function Poker() {
               disabled={isLoading || isUpdatingStory}
             >
               Reset Votes
-            </button>
-            <button 
-              className={`${styles.actionBtn} ${styles.newStoryBtn}`}
-              onClick={handleNewStory}
-              disabled={isLoading || isUpdatingStory}
-            >
-              New Story
             </button>
           </div>
         )}

@@ -1,4 +1,4 @@
-import { getActiveStoryBySessionId, resetVotes, verifyAdminToken } from '../../../../lib/db';
+import { getActiveStoryBySessionId, resetVotes, verifyAdminToken, getSession } from '../../../../lib/db';
 
 export default async function handler(req, res) {
   const { sessionId } = req.query;
@@ -32,8 +32,13 @@ export default async function handler(req, res) {
     
     await resetVotes(story.id);
     
+    // Get the updated session to return the timestamp
+    const session = await getSession(story.id);
+    
     return res.status(200).json({
-      message: 'Votes reset successfully'
+      message: 'Votes reset successfully',
+      lastUpdated: new Date(session.updatedAt).getTime(),
+      isRevealed: session.isRevealed
     });
   } catch (error) {
     console.error('Error resetting votes:', error);

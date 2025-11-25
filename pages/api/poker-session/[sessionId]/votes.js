@@ -12,7 +12,7 @@ export default async function handler(req, res) {
       const story = await getActiveStoryBySessionId(sessionId);
       
       if (!story) {
-        return res.status(200).json({ votes: {}, isRevealed: false });
+        return res.status(200).json({ votes: {}, isRevealed: false, storyLastUpdated: 0 });
       }
       
       const votes = await getVotes(story.id);
@@ -29,11 +29,14 @@ export default async function handler(req, res) {
         ? Math.max(...votes.map(v => new Date(v.createdAt).getTime()))
         : 0;
       const sessionUpdateTime = new Date(session.updatedAt).getTime();
+      const storyUpdateTime = new Date(story.updatedAt).getTime();
       
       return res.status(200).json({
         votes: votesObj,
         isRevealed: session.isRevealed,
-        lastUpdated: Math.max(latestVoteTime, sessionUpdateTime),
+        isActive: story.isActive, // Include story active status
+        lastUpdated: Math.max(latestVoteTime, sessionUpdateTime, storyUpdateTime),
+        storyLastUpdated: storyUpdateTime, // Include story update time so clients can detect story changes
         voteCount: votes.length
       });
     } catch (error) {

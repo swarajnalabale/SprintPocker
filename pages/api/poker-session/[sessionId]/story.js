@@ -1,4 +1,4 @@
-import { getActiveStoryBySessionId, createStoryForSession, verifyAdminToken } from '../../../../lib/db';
+import { getActiveStoryBySessionId, createStoryForSession, verifyAdminToken, resetVotes } from '../../../../lib/db';
 
 export default async function handler(req, res) {
   const { sessionId } = req.query;
@@ -21,6 +21,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         id: story.id,
         description: story.description,
+        isActive: story.isActive,
         lastUpdated: new Date(story.updatedAt).getTime()
       });
     } catch (error) {
@@ -51,11 +52,20 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Story description is required' });
       }
       
+      // Get the current active story before creating a new one
+      const currentStory = await getActiveStoryBySessionId(sessionId);
+      
+      // If there's an existing active story, reset its votes before creating the new one
+      if (currentStory) {
+        await resetVotes(currentStory.id);
+      }
+      
       const story = await createStoryForSession(sessionId, description.trim());
       
       return res.status(200).json({
         id: story.id,
         description: story.description,
+        lastUpdated: new Date(story.updatedAt).getTime(),
         message: 'Story created successfully'
       });
     } catch (error) {
